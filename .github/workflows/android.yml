@@ -17,7 +17,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - run: node tests/capture.cjs
-      - run: gradle testDebugUnitTest
+      - run: gradle --stacktrace testDebugUnitTest
       - name: Assemble and verify APK
         shell: bash
         env:
@@ -31,10 +31,10 @@ jobs:
           if [[ -n "$STORE_B64" ]]; then
             export DAYLIST_KEYSTORE="$RUNNER_TEMP/daylist.jks"
             printf '%s' "$STORE_B64" | base64 -d > "$DAYLIST_KEYSTORE"
-            gradle assembleRelease
+            gradle --stacktrace assembleRelease
             cp app/build/outputs/apk/release/app-release.apk out/Daylist-release.apk
           else
-            gradle assembleDebug
+            gradle --stacktrace assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk out/Daylist-debug.apk
           fi
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs out/*.apk
@@ -43,6 +43,12 @@ jobs:
         with:
           name: Daylist-Android
           path: out/*.apk
+      - name: Report runner memory on failure
+        if: failure()
+        run: |
+          free -h
+          if [[ -r /sys/fs/cgroup/memory.events ]]; then cat /sys/fs/cgroup/memory.events; fi
+          if [[ -r /sys/fs/cgroup/memory.max ]]; then cat /sys/fs/cgroup/memory.max; fi
   ui:
     runs-on: ubuntu-latest
     steps:
@@ -54,6 +60,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Build app and UI test APKs before starting the emulator
+        run: gradle --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -64,7 +72,7 @@ jobs:
           api-level: 35
           arch: x86_64
           disable-animations: true
-          script: bash tests/visual.sh
+          script: bash tests/visual.sh --prebuilt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -72,3 +80,9 @@ jobs:
           path: |
             visual/
             app/build/reports/androidTests/
+      - name: Report runner memory on failure
+        if: failure()
+        run: |
+          free -h
+          if [[ -r /sys/fs/cgroup/memory.events ]]; then cat /sys/fs/cgroup/memory.events; fi
+          if [[ -r /sys/fs/cgroup/memory.max ]]; then cat /sys/fs/cgroup/memory.max; fi

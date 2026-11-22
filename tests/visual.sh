@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -eu
-gradle assembleDebug assembleDebugAndroidTest
+if [[ "${1:-}" != "--prebuilt" ]]; then
+  gradle --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest
+fi
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 mkdir -p visual
