@@ -1,3 +1,4 @@
 <resources><color name="widget_surface">#FAFAF8</color><color name="widget_text">#202124</color><color name="widget_accent">#3869C5</color>
-<style name="DaylistWindow" parent="@android:style/Theme.Material.Light.NoActionBar"><item name="android:windowBackground">@color/widget_surface</item></style>
-<style name="DaylistLaunch" parent="Theme.SplashScreen"><item name="windowSplashScreenBackground">@color/widget_surface</item><item name="windowSplashScreenAnimatedIcon">@mipmap/launcher</item><item name="postSplashScreenTheme">@style/DaylistWindow</item></style></resources>
+<style name="DaylistWindow" parent="@android:style/Theme.Material.Light.NoActionBar"><item name="android:windowBackground">@color/launch_black</item></style>
+<color name="launch_black">#121316</color>
+<style name="DaylistLaunch" parent="Theme.SplashScreen"><item name="windowSplashScreenBackground">@color/launch_black</item><item name="windowSplashScreenAnimatedIcon">@drawable/launch_clear</item><item name="postSplashScreenTheme">@style/DaylistWindow</item></style></resources>

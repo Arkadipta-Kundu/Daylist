@@ -16,6 +16,7 @@ public class Reminders extends BroadcastReceiver {
     }
     static NotificationManager notifications(Context c) {
         NotificationManager n = c.getSystemService(NotificationManager.class);
+        if(n.getNotificationChannel(CHANNEL)!=null)return n;
         NotificationChannel channel = new NotificationChannel(CHANNEL,"Task alarms",NotificationManager.IMPORTANCE_HIGH);
         channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
             new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build());
@@ -55,6 +56,19 @@ public class Reminders extends BroadcastReceiver {
             long earliest=Long.MAX_VALUE, now=System.currentTimeMillis();
             LocalDate today=LocalDate.now();
             boolean allowed=enabled(c), changed=false;
+            // The test shares the task wake-up PendingIntent, receiver and notification channel.
+            long test=prefs(c).getLong("testAt",0);
+            if(test>now)earliest=test;
+            else if(test>0){
+                if(allowed){
+                    Notification notification=new Notification.Builder(c,CHANNEL)
+                        .setSmallIcon(R.drawable.alert_mark).setCategory(Notification.CATEGORY_ALARM)
+                        .setContentTitle("Daylist test reminder").setContentText("Your reminder reached the notification channel.").setAutoCancel(true).build();
+                    notifications(c).notify("reliability-test",1,notification);
+                }
+                prefs(c).edit().remove("testAt").putLong("testScheduled",test).putLong("testHandled",now)
+                    .putBoolean("testPosted",allowed).apply();
+            }
             for(int i=0;i<list.length();i++) {
                 JSONObject t=list.getJSONObject(i);
                 String alarmTime=t.optString("reminder");

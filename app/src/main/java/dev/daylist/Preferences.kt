@@ -18,9 +18,22 @@ import org.json.JSONObject
     Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom=32.dp)){
         Heading("Appearance")
         ListItem(headlineContent={Text("Color theme")},supportingContent={Choices(listOf("System","Light","Dark"),mode,theme)})
-        Heading("Notifications and reminders")
+        Heading("Reminder reliability")
+        val enabled=bridge.alerts();val precise=bridge.exact()
+        ListItem(headlineContent={Text(if(!enabled)"Notifications disabled" else if(precise)"Ready" else "Limited precision")},supportingContent={Text(if(!enabled)"Enable task notifications to receive reminders." else if(!precise)"Android may deliver reminders late." else "Precise scheduling is available.")})
         Preference("Task notifications",if(bridge.alerts())"Allowed" else "Turn on to receive reminders"){bridge.settings(false)}
         if(Build.VERSION.SDK_INT>=31)Preference("Precise alarms",if(bridge.exact())"Allowed" else "Enable for on-time reminders"){bridge.settings(true)}
+        val probe=Reminders.prefs(a)
+        val scheduled=probe.getLong("testScheduled",0)
+        val handled=probe.getLong("testHandled",0)
+        fun clock(ms:Long)=java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))
+        val pending=probe.getLong("testAt",0)
+        val result=when{
+            pending>0->"Scheduled for "+clock(pending)
+            handled>0->"Scheduled "+clock(scheduled)+" · "+(if(probe.getBoolean("testPosted",false))"posted " else "notifications blocked at ")+clock(handled)
+            else->"Schedule a test in one minute, then lock your phone."
+        }
+        Preference("Test reminder",result){if(enabled)bridge.testReminder() else bridge.settings(false)}
         Toggle("Notify at the deadline",bridge.pref("notifyAtDue")){bridge.setting("notifyAtDue",it);a.refresh()}
         Heading("Quick capture")
         Toggle("Enter sends a task",bridge.pref("enter")){bridge.setting("enter",it);a.refresh()}
@@ -30,7 +43,7 @@ import org.json.JSONObject
         Preference("Export backup","Save a copy to a location you choose"){bridge.backup("export")}
         Preference("Import backup","Preview a file before replacing tasks"){bridge.backup("import")}
         Heading("About")
-        ListItem(headlineContent={Text("Daylist")},supportingContent={Text("Version 1.4")})
+        ListItem(headlineContent={Text("Daylist")},supportingContent={Text("Version 1.4.1")})
     }
 }
 @Composable private fun Preference(title:String,summary:String="",click:()->Unit){

@@ -53,6 +53,13 @@ public class Main extends androidx.activity.ComponentActivity {
         public String selection(){String id=selected;selected="";return id==null?"":id;}
         public String list(){return Reminders.prefs(Main.this).getString("list","[]");}
         public boolean exact(){return Reminders.exact(Main.this);}
+        public void testReminder(){
+            Context c=getApplicationContext();
+            TaskStore.io.execute(()->{synchronized(Reminders.class){
+                Reminders.prefs(c).edit().putLong("testAt",System.currentTimeMillis()+60000L).apply();
+                Reminders.reconcile(c);
+            }});
+        }
         public boolean alerts(){return Reminders.enabled(Main.this);}
         public void settings(boolean alarm){
             runOnUiThread(()->{
