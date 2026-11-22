@@ -1,0 +1,28 @@
+plugins { id 'com.android.application' version '8.7.3' }
+android {
+    namespace 'dev.daylist'
+    compileSdk 35
+    defaultConfig { applicationId 'dev.daylist'; minSdk 26; targetSdk 34; versionCode 2; versionName '1.1' }
+}
+android { compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 } }
+dependencies {
+ implementation 'androidx.work:work-runtime:2.9.1'
+ implementation 'com.google.android.gms:play-services-auth:21.3.0'
+ implementation 'org.commonmark:commonmark:0.22.0'
+ implementation 'org.commonmark:commonmark-ext-gfm-tables:0.22.0'
+ implementation 'org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0'
+ implementation 'org.commonmark:commonmark-ext-task-list-items:0.22.0'
+}
+if (System.getenv('DAYLIST_KEYSTORE')) {
+ android.signingConfigs.create('personal') {
+    storeFile file(System.getenv('DAYLIST_KEYSTORE'))
+    storePassword System.getenv('DAYLIST_STORE_PASSWORD')
+    keyAlias System.getenv('DAYLIST_KEY_ALIAS')
+    keyPassword System.getenv('DAYLIST_KEY_PASSWORD')
+ }
+ android.buildTypes.release.signingConfig = android.signingConfigs.personal
+}
+dependencies {
+ testImplementation 'junit:junit:4.13.2'
+ testImplementation 'org.json:json:20240303'
+}
