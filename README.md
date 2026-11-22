@@ -1,5 +1,5 @@
-# Daylist 1.1 for Android
-Open + Task and type “Practice guitar tomorrow at 6 pm !!” followed by a quoted description and any number of [] checklist entries. Send saves immediately. Tap a preview chip or Details to adjust the draft. Enter-to-send is optional; Shift+Enter adds a line. Date-only tasks remain silent. Explicit reminder times use the task date and override the notify-at-deadline setting. Times follow the phone’s local zone.
+# Daylist 1.2 for Android
+Tap + and type “Practice guitar tomorrow at 6 pm !!” followed by a quoted description and any number of [] checklist entries. Send saves immediately. Tap a preview chip or the paperclip to adjust the draft. Enter-to-send is optional; Shift+Enter adds a line. Date-only tasks remain silent. Explicit reminder times use the task date and override the notify-at-deadline setting. Times follow the phone’s local zone.
 
 ## Install and upgrade
 Android 8+, current System WebView. Extract this project and put its contents, including .github, at the repository root. Push to run Build Android APK. Download and extract the Daylist-Android artifact. The workflow verifies the APK signature and prints the icon and package metadata.
@@ -20,3 +20,9 @@ Preserves the existing task store and identifiers. Snapshots carry the complete 
 AlarmManager schedules the next eligible wake-up. Android's persisted repair job and receivers reconcile on startup, reboot after unlock, time/zone changes and updates. Exact access denial uses an inexact wake-up. Force-stopping requires reopening the app. A missed interval produces the latest eligible alert per task. Complete and Snooze (10 minutes) run through the receiver. Notification delivery and sound depend on device permissions, channel settings and system limits.
 
 Run node tests/capture.cjs. Before trusting alerts or cloud recovery, use disposable test data: check locked-screen delivery, snooze, system process kill, reboot, time changes, multiple simultaneous tasks, edited/cancelled reminders, permission denial, offline changes followed by reconnection, failed uploads, corrupted imports and reinstall restore. Check the launcher icon in Settings, Recents and themed icon mode. Android build, installation, Drive authorization and phone delivery require external verification.
+
+
+## Native interface and visual checks
+The activity hosts a Material 3 Compose interface. The packaged parser runs locally in an isolated JavaScript engine backed by System WebView. Markdown preview uses a separate read-only WebView with JavaScript and network access disabled. Task storage, IDs, reminder channels and backup schema are compatible with version 1.1. Open the overflow menu for Completed or Settings.
+
+The GitHub workflow includes a separate emulator job. It captures the task list, composer, metadata sheet, task editor, completed list and settings in a normal light profile and a compact dark profile with 150% text. Download the Daylist-UI-checks artifact to inspect the images. These are instrumented captures from the built app. To run on an attached disposable emulator locally, run bash tests/visual.sh from the project root. The script clears Daylist and changes emulator display settings between runs.

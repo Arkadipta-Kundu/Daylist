@@ -23,7 +23,7 @@ final class Snapshot {
     JSONObject data=new JSONObject().put("tasks",Reminders.tasks(c)).put("notifyAtDue",Reminders.prefs(c).getBoolean("notifyAtDue",true))
         .put("enter",Reminders.prefs(c).getBoolean("enter",false));
     String payload=data.toString();
-    return new JSONObject().put("format","Daylist").put("version",1).put("appVersion","1.1").put("created",Instant.now().toString())
+    return new JSONObject().put("format","Daylist").put("version",1).put("appVersion","1.2").put("created",Instant.now().toString())
         .put("sha256",hash(payload)).put("payload",payload).toString();
  }
  static JSONObject validate(String raw)throws Exception{
