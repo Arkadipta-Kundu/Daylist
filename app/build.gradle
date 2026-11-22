@@ -5,7 +5,7 @@ android {
     kotlinOptions { jvmTarget = '1.8' }
     namespace 'dev.daylist'
     compileSdk 35
-    defaultConfig { applicationId 'dev.daylist'; minSdk 26; targetSdk 34; versionCode 3; versionName '1.2' }
+    defaultConfig { applicationId 'dev.daylist'; minSdk 26; targetSdk 34; versionCode 5; versionName '1.4' }
 }
 android { compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 } }
 dependencies {
@@ -14,8 +14,8 @@ dependencies {
  implementation 'androidx.compose.material3:material3'
  implementation 'androidx.compose.material:material-icons-extended'
  implementation 'androidx.compose.animation:animation'
- implementation 'androidx.work:work-runtime:2.9.1'
- implementation 'com.google.android.gms:play-services-auth:21.3.0'
+ implementation 'androidx.core:core-splashscreen:1.0.1'
+
  implementation 'org.commonmark:commonmark:0.22.0'
  implementation 'org.commonmark:commonmark-ext-gfm-tables:0.22.0'
  implementation 'org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0'
@@ -42,4 +42,14 @@ dependencies {
  androidTestImplementation 'androidx.test.ext:junit:1.2.1'
  androidTestImplementation 'androidx.test:runner:1.6.2'
  debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
+
+android.buildTypes {
+    performance {
+        initWith release
+        applicationIdSuffix '.performance'
+        signingConfig android.signingConfigs.debug
+        debuggable false
+        matchingFallbacks = ['release']
+    }
 }

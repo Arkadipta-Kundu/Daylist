@@ -11,8 +11,8 @@ public class Repair extends JobService {
                 .setPeriodic(15*60*1000L).setPersisted(true).build());
     }
     @Override public boolean onStartJob(JobParameters parameters){
-        Reminders.reconcile(this);
-        return false;
+        TaskStore.io.execute(()->{try{Reminders.reconcile(this);}finally{jobFinished(parameters,false);}});
+        return true;
     }
     @Override public boolean onStopJob(JobParameters parameters){return true;}
 }

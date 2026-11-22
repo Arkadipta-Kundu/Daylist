@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application>
+<profileable android:shell="true"/><activity android:name=".Fixture" android:exported="true" android:permission="android.permission.DUMP" android:theme="@android:style/Theme.NoDisplay"/>
+</application></manifest>

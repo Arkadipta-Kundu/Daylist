@@ -28,16 +28,23 @@ private val fields=linkedMapOf("Date" to Icons.Outlined.Event,"Reminder" to Icon
     val t=remember(raw){JSONObject(raw)}
     var active by rememberSaveable(initial){mutableStateOf(first)}
     var error by rememberSaveable{mutableStateOf("")}
-    var picker by rememberSaveable{mutableStateOf("")}
+    var picker by rememberSaveable{mutableStateOf(if(adding&&first=="Reminder")"reminderDate" else "")}
     var confirm by remember{mutableStateOf(false)}
     var reading by rememberSaveable{mutableStateOf(!adding)}
-    fun set(k:String,v:Any){val copy=t.copyTask().put(k,v);if(k=="date")copy.remove("monthDay");raw=copy.toString();error=""}
+    fun set(k:String,v:Any){val copy=t.copyTask().put(k,v);if(k=="date")copy.remove("monthDay");if(k=="reminder"||k=="reminderDate"){
+            copy.put("reminderError","")
+            if(v=="" && k=="reminder"){copy.put("reminderDate","")}
+            if(k=="reminder" && v!="" && copy.str("reminderDate").isEmpty())copy.put("reminderDate",copy.str("date").ifEmpty{LocalDate.now().toString()})
+        };raw=copy.toString();error=""}
     ModalBottomSheet(onDismissRequest=close,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)){
         Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding().padding(horizontal=16.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Text(if(adding)"Task details" else "Edit task",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
                 TextButton(onClick=close){Text("Cancel")}
-                Button(onClick={val issue=if(adding&&t.str("title").isBlank())t.copyTask().put("title","draft").issue() else t.issue();if(issue==null)save(t)else error=issue}){Text(if(adding)"Apply" else "Save")}
+                Button(onClick={val issue=if(adding&&t.str("title").isBlank())t.copyTask().put("title","draft").issue() else t.issue();val before=JSONObject(initial)
+                    val changed=adding||before.str("reminderDate")!=t.str("reminderDate")||before.str("reminder")!=t.str("reminder")
+                    val problem=issue?:if(changed)t.futureReminderIssue() else null
+                    if(problem==null)save(t)else error=problem}){Text(if(adding)"Apply" else "Save")}
             }
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
             Column(Modifier.weight(1f,fill=false).verticalScroll(rememberScrollState()).padding(bottom=16.dp)){
@@ -56,7 +63,7 @@ private val fields=linkedMapOf("Date" to Icons.Outlined.Event,"Reminder" to Icon
                     ListItem(headlineContent={Text(name)},supportingContent=if(summary.isBlank())null else {{Text(summary)}},leadingContent={Icon(icon,null)},trailingContent={Icon(if(active==name)Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,null)},modifier=Modifier.clickable{active=if(active==name)"" else name})
                     if(active==name)Column(Modifier.fillMaxWidth().padding(start=12.dp,end=8.dp,bottom=12.dp)){
                         when(name){
-                            "Date","Reminder"->{for((key,label) in if(name=="Date")listOf("date" to "Due date","time" to "Due time")else listOf("reminder" to "Remind at")){
+                            "Date","Reminder"->{for((key,label) in if(name=="Date")listOf("date" to "Due date","time" to "Due time")else listOf("reminderDate" to "Reminder date","reminder" to "Remind at")){
                                 Row(verticalAlignment=Alignment.CenterVertically){TextButton(onClick={picker=key}){Text(label+" · "+t.str(key).ifEmpty{"Choose"})}
                                 if(t.str(key).isNotEmpty())IconButton(onClick={set(key,"")}){Icon(Icons.Outlined.Close,"Clear "+label)}}
                             }}
@@ -72,7 +79,7 @@ private val fields=linkedMapOf("Date" to Icons.Outlined.Event,"Reminder" to Icon
                             "Tags"->{var tags by rememberSaveable{mutableStateOf((t.optJSONArray("tags")?:JSONArray()).let{a->(0 until a.length()).joinToString(", "){a.getString(it)}})}
                                 OutlinedTextField(tags,{tags=it;set("tags",JSONArray(it.split(',',' ').map{v->v.trim().removePrefix("#")}.filter{v->v.isNotBlank()}.distinct()))},label={Text("Tags, separated by commas")})}
                             "Description"->{TextButton(onClick={reading=!reading}){Text(if(reading)"Edit Markdown" else "Preview Markdown")}
-                                if(reading&&t.str("description").isNotEmpty())Markdown(bridge.markdown(t.str("description")))
+                                if(reading&&t.str("description").isNotEmpty())Markdown(remember(t.str("description")){bridge.markdown(t.str("description"))})
                                 else OutlinedTextField(t.str("description"),{set("description",it)},label={Text("Markdown description")},minLines=2,modifier=Modifier.fillMaxWidth())}
                             "Subtasks"->{
                                 fun change(block:(MutableList<JSONObject>)->Unit){val rows=subs.rows().map{it.copyTask()}.toMutableList();block(rows);set("subs",JSONArray(rows))}
@@ -94,10 +101,10 @@ private val fields=linkedMapOf("Date" to Icons.Outlined.Event,"Reminder" to Icon
         }
     }
     if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Delete this task?")},text={Text("Its subtasks will also be deleted.")},confirmButton={TextButton(onClick={delete(t)}){Text("Delete")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancel")}})
-    if(picker=="date"){
-        val date=t.str("date").takeIf{it.isNotEmpty()}?.let{LocalDate.parse(it).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()}
+    if(picker=="date" || picker=="reminderDate"){
+        val date=t.str(picker).takeIf{it.isNotEmpty()}?.let{LocalDate.parse(it).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()}
         val state=rememberDatePickerState(initialSelectedDateMillis=date)
-        DatePickerDialog(onDismissRequest={picker=""},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{set("date",Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString())};picker=""}){Text("OK")}},dismissButton={TextButton(onClick={picker=""}){Text("Cancel")}}){DatePicker(state)}
+        DatePickerDialog(onDismissRequest={picker=""},confirmButton={TextButton(onClick={state.selectedDateMillis?.let{set(picker,Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString())};picker=if(picker=="reminderDate")"reminder" else ""}){Text("OK")}},dismissButton={TextButton(onClick={picker=""}){Text("Cancel")}}){DatePicker(state)}
     }else if(picker.isNotEmpty()){
         val time=t.str(picker).takeIf{it.isNotEmpty()}?.let(LocalTime::parse)?:LocalTime.now()
         val state=rememberTimePickerState(time.hour,time.minute,android.text.format.DateFormat.is24HourFormat(LocalContext.current))

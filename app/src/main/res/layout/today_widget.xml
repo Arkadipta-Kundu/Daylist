@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_bg" android:padding="8dp">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+ <TextView android:id="@+id/heading" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp" android:gravity="center_vertical" android:text="Today" android:textStyle="bold" android:textSize="16sp" android:textColor="@color/widget_text"/>
+ <TextView android:id="@+id/addTask" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="+" android:textSize="24sp" android:textColor="@color/widget_accent" android:contentDescription="Add task"/></LinearLayout>
+ <TextView android:id="@+id/progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="@color/widget_text"/>
+ <ListView android:id="@+id/tasks" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@null"/>
+ <TextView android:id="@+id/empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="All done for today." android:textColor="@color/widget_text"/></LinearLayout>

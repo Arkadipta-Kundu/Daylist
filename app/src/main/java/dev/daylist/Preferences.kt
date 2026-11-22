@@ -14,7 +14,7 @@ import java.time.format.*
 import org.json.JSONObject
 
 @Composable internal fun Preferences(a:Main,bridge:Main.Bridge,mode:String,theme:(String)->Unit,revision:Int){
-    val drive=Cloud.state(a)
+    var guide by remember { mutableStateOf(false) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom=32.dp)){
         Heading("Appearance")
         ListItem(headlineContent={Text("Color theme")},supportingContent={Choices(listOf("System","Light","Dark"),mode,theme)})
@@ -24,20 +24,13 @@ import org.json.JSONObject
         Toggle("Notify at the deadline",bridge.pref("notifyAtDue")){bridge.setting("notifyAtDue",it);a.refresh()}
         Heading("Quick capture")
         Toggle("Enter sends a task",bridge.pref("enter")){bridge.setting("enter",it);a.refresh()}
-        Heading("Backup and restore")
-        val connected=drive.getBoolean("enabled",false)
-        val last=drive.getString("last","").orEmpty().takeIf{it.isNotBlank()}?.let{runCatching{Instant.parse(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM,FormatStyle.SHORT))}.getOrNull()}
-        Preference("Google Drive",if(connected)drive.getString("email","Connected") ?: "Connected" else "Connect an account"){bridge.backup("connect")}
-        if(connected){
-            Preference("Back up now",listOfNotNull(drive.getString("status","Pending"),last?.let{"Last verified: $it"}).joinToString("\n")){bridge.backup("now")}
-            Preference("Disable automatic backups"){bridge.backup("off")}
-        }
-        Preference("Restore from Drive","Choose a saved snapshot"){bridge.backup("restore")}
+        Preference("Quick syntax guide"){guide=!guide}
+        if(guide) Text(SYNTAX_GUIDE,Modifier.padding(horizontal=16.dp),style=MaterialTheme.typography.bodyMedium)
         Heading("Data management")
         Preference("Export backup","Save a copy to a location you choose"){bridge.backup("export")}
         Preference("Import backup","Preview a file before replacing tasks"){bridge.backup("import")}
         Heading("About")
-        ListItem(headlineContent={Text("Daylist")},supportingContent={Text("Version 1.2")})
+        ListItem(headlineContent={Text("Daylist")},supportingContent={Text("Version 1.4")})
     }
 }
 @Composable private fun Preference(title:String,summary:String="",click:()->Unit){
@@ -46,3 +39,17 @@ import org.json.JSONObject
 @Composable private fun Toggle(title:String,value:Boolean,change:(Boolean)->Unit){
     ListItem(headlineContent={Text(title)},trailingContent={Switch(value,onCheckedChange=null)},modifier=Modifier.toggleable(value=value,role=Role.Switch,onValueChange=change))
 }
+
+private const val SYNTAX_GUIDE = """Buy milk
+Study Java today
+Call Rahul tomorrow
+Finish report tomorrow by 5 pm
+Call mom remind at 8 pm
+Take medicine remind in 30 minutes
+Buy groceries !
+Finish project !!
+Submit assignment !!!
+Study Java "Revise Collections"
+Clean room () Sweep floor
+Study SQL #learning
+Workout every Monday"""

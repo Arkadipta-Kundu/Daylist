@@ -1,0 +1,1 @@
+<resources><color name="widget_surface">#121316</color><color name="widget_text">#E8EAED</color><color name="widget_accent">#A8C7FA</color><style name="DaylistWindow" parent="@android:style/Theme.Material.NoActionBar"><item name="android:windowBackground">@color/widget_surface</item></style></resources>

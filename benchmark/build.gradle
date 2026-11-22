@@ -1,0 +1,18 @@
+plugins {
+ id 'com.android.test' version '8.7.3'
+ id 'org.jetbrains.kotlin.android' version '1.9.24'
+}
+android {
+ namespace 'dev.daylist.benchmark'
+ compileSdk 35
+ defaultConfig { minSdk 29; targetSdk 34; testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner' }
+ targetProjectPath = ':app'
+ experimentalProperties['android.experimental.self-instrumenting'] = true
+ buildTypes { performance { debuggable true; signingConfig signingConfigs.debug; matchingFallbacks = ['release'] } }
+}
+androidComponents { beforeVariants(selector().all()) { variant -> variant.enable = variant.buildType == 'performance' } }
+dependencies {
+ implementation 'androidx.benchmark:benchmark-macro-junit4:1.3.3'
+ implementation 'androidx.test.ext:junit:1.2.1'
+ implementation 'androidx.test.uiautomator:uiautomator:2.3.0'
+}

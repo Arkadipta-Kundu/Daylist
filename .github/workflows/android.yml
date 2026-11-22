@@ -17,6 +17,11 @@ jobs:
         with:
           gradle-version: '8.9'
       - run: node tests/capture.cjs
+      - name: Verify reminder dates
+        run: |
+          mkdir -p "$RUNNER_TEMP/alarm-dates"
+          javac -d "$RUNNER_TEMP/alarm-dates" app/src/main/java/dev/daylist/AlarmDates.java tests/AlarmDatesCheck.java
+          java -cp "$RUNNER_TEMP/alarm-dates" dev.daylist.AlarmDatesCheck
       - run: gradle --stacktrace testDebugUnitTest
       - name: Assemble and verify APK
         shell: bash
@@ -36,6 +41,10 @@ jobs:
           else
             gradle --stacktrace assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk out/Daylist-debug.apk
+          fi
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions out/*.apk | grep -Fq "android.permission.INTERNET"; then
+            echo "Unexpected internet permission in built APK" >&2
+            exit 1
           fi
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs out/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging out/*.apk | grep -E 'package:|application-icon' 

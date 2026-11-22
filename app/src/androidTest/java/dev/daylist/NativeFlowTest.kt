@@ -26,7 +26,7 @@ class NativeFlowTest {
         shot("inbox")
         ui.onNodeWithContentDescription("New task").performClick()
         val title="Review the SQL query plan for the reporting service and record the indexing trade-offs"
-        ui.onNodeWithContentDescription("New task text").performTextInput("$title tomorrow at 7 pm !! [] Inspect indexes")
+        ui.onNodeWithContentDescription("New task text").performTextInput("$title tomorrow at 7 pm !! () Inspect indexes")
         ui.waitUntil(10000){ui.onAllNodesWithText("High").fetchSemanticsNodes().isNotEmpty()}
         shot("composer")
         ui.onNodeWithContentDescription("Add details").performClick()

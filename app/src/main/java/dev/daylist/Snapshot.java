@@ -23,7 +23,7 @@ final class Snapshot {
     JSONObject data=new JSONObject().put("tasks",Reminders.tasks(c)).put("notifyAtDue",Reminders.prefs(c).getBoolean("notifyAtDue",true))
         .put("enter",Reminders.prefs(c).getBoolean("enter",false));
     String payload=data.toString();
-    return new JSONObject().put("format","Daylist").put("version",1).put("appVersion","1.2").put("created",Instant.now().toString())
+    return new JSONObject().put("format","Daylist").put("version",1).put("appVersion","1.4").put("created",Instant.now().toString())
         .put("sha256",hash(payload)).put("payload",payload).toString();
  }
  static JSONObject validate(String raw)throws Exception{
@@ -34,7 +34,9 @@ final class Snapshot {
         JSONObject t=a.getJSONObject(i);if(t.getString("id").isEmpty()||!ids.add(t.getString("id"))||t.getString("title").trim().isEmpty())throw new IOException("Invalid task");
         String date=t.getString("date"), time=t.getString("time"),rem=t.optString("reminder"),rule=t.getString("repeat");
         if(!date.isEmpty())LocalDate.parse(date); if(!time.isEmpty())LocalTime.parse(time);if(!rem.isEmpty())LocalTime.parse(rem);
-        if(date.isEmpty()&&!(time+rem+rule).isEmpty()||!Arrays.asList("","days","weeks","months").contains(rule)||t.getInt("interval")<1||t.getInt("interval")>3650||rule.equals("weeks")&&(t.getInt("mask")<1||t.getInt("mask")>127))throw new IOException("Invalid schedule");
+        String reminderDate=t.optString("reminderDate");
+        if(!reminderDate.isEmpty())LocalDate.parse(reminderDate);
+        if(date.isEmpty()&&(!time.isEmpty()||!rule.isEmpty()||!rem.isEmpty()&&reminderDate.isEmpty())||!Arrays.asList("","days","weeks","months").contains(rule)||t.getInt("interval")<1||t.getInt("interval")>3650||rule.equals("weeks")&&(t.getInt("mask")<1||t.getInt("mask")>127))throw new IOException("Invalid schedule");
         if(!t.optString("alerted").isEmpty())LocalDate.parse(t.getString("alerted"));
         if(t.has("monthDay")&&(t.getInt("monthDay")<1||t.getInt("monthDay")>31))throw new IOException("Invalid monthly date");
         if(t.optLong("snooze")>0&&t.optString("alerted").isEmpty())throw new IOException("Missing snooze occurrence");
@@ -47,7 +49,7 @@ final class Snapshot {
     synchronized(Reminders.class){
         if(!Reminders.prefs(c).edit().putString("list",data.getJSONArray("tasks").toString()).putBoolean("enter",data.optBoolean("enter"))
             .putBoolean("notifyAtDue",data.optBoolean("notifyAtDue",true)).commit())throw new IOException("Storage unavailable");
-        Reminders.notifications(c).cancelAll();Reminders.reconcile(c);
+        Reminders.notifications(c).cancelAll();Reminders.reconcile(c);TodayWidget.changed(c);
     }
  }
 }

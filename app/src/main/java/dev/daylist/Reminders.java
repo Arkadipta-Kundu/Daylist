@@ -59,8 +59,12 @@ public class Reminders extends BroadcastReceiver {
                 JSONObject t=list.getJSONObject(i);
                 String alarmTime=t.optString("reminder");
                 if(alarmTime.isEmpty() && prefs(c).getBoolean("notifyAtDue",true))alarmTime=t.optString("time");
-                if(t.optBoolean("done") || alarmTime.isEmpty() || t.optString("date").isEmpty()) continue;
-                LocalDate start=LocalDate.parse(t.getString("date"));
+                String due=t.optString("date");
+                if(t.optBoolean("done") || alarmTime.isEmpty())continue;
+                AlarmDates dates=AlarmDates.resolve(due,t.optString("reminder").isEmpty()?"":t.optString("reminderDate"),!t.optString("repeat").isEmpty());
+                if(dates==null)continue;
+                LocalDate start=dates.start;
+                long offset=dates.offset;
                 String last=t.optString("alerted");
                 LocalDate floor=last.isEmpty()?start:LocalDate.parse(last).plusDays(1);
                 LocalDate d=next(t,start,floor);
@@ -68,13 +72,13 @@ public class Reminders extends BroadcastReceiver {
                 if(snooze>now)earliest=Math.min(earliest,snooze);
                 boolean repeatAlert=snooze>0&&snooze<=now&&allowed;
                 LocalDate nextRegular=d;
-                if(repeatAlert && (d==null || instant(d,LocalTime.parse(alarmTime))>now))d=LocalDate.parse(last);
+                if(repeatAlert && (d==null || instant(d.plusDays(offset),LocalTime.parse(alarmTime))>now))d=LocalDate.parse(last);
                 else repeatAlert=false;
                 if(d==null) continue;
                 LocalTime time=LocalTime.parse(alarmTime);
-                if(instant(d,time)<=now && allowed) {
+                if(instant(d.plusDays(offset),time)<=now && allowed) {
                     // Coalesce missed occurrences, retaining today's future occurrence.
-                    LocalDate limit=instant(today,time)<=now?today:today.minusDays(1);
+                    LocalDate limit=(instant(today,time)<=now?today:today.minusDays(1)).minusDays(offset);
                     if(!repeatAlert){if("days".equals(t.optString("repeat"))) {
                         int step=Math.max(1,t.optInt("interval",1));
                         d=start.plusDays((limit.toEpochDay()-start.toEpochDay())/step*step);
@@ -99,12 +103,12 @@ public class Reminders extends BroadcastReceiver {
                     PendingIntent later=PendingIntent.getBroadcast(c,0,delay,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
                     Notification alert=new Notification.Builder(c,CHANNEL).setSmallIcon(R.drawable.alert_mark)
                         .addAction(R.drawable.alert_mark,"Complete",done).addAction(R.drawable.alert_mark,"Snooze 10 min",later).setCategory(Notification.CATEGORY_ALARM).setContentTitle(t.getString("title"))
-                        .setContentText(d+" · "+time+"  "+t.optString("description")).setAutoCancel(true).setContentIntent(tap).build();
+                        .setContentText(d.plusDays(offset)+" · "+time+"  "+t.optString("description")).setAutoCancel(true).setContentIntent(tap).build();
                     notifications(c).notify(id,1,alert);
                     t.put("alerted",d.toString()); changed=true;
                     d=repeatAlert?nextRegular:next(t,start,d.plusDays(1));
                 }
-                if(d!=null && instant(d,time)>now) earliest=Math.min(earliest,instant(d,time));
+                if(d!=null && instant(d.plusDays(offset),time)>now) earliest=Math.min(earliest,instant(d.plusDays(offset),time));
             }
             if(changed && !prefs(c).edit().putString("list",list.toString()).commit()) throw new IllegalStateException("Storage unavailable");
             AlarmManager am=c.getSystemService(AlarmManager.class);
@@ -120,16 +124,16 @@ public class Reminders extends BroadcastReceiver {
     static long instant(LocalDate date,LocalTime time) {
         return date.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
-    @Override public void onReceive(Context c,Intent intent) { if("dev.daylist.COMPLETE".equals(intent.getAction())||"dev.daylist.SNOOZE".equals(intent.getAction())){
+    @Override public void onReceive(Context c,Intent intent) {
+        PendingResult pending=goAsync();TaskStore.io.execute(()->{try{handle(c,intent);}finally{pending.finish();}});
+    }
+    private void handle(Context c,Intent intent){if("dev.daylist.COMPLETE".equals(intent.getAction())||"dev.daylist.SNOOZE".equals(intent.getAction())){
         synchronized(Reminders.class){try{
             JSONArray list=tasks(c);for(int i=0;i<list.length();i++){JSONObject t=list.getJSONObject(i);
                 if(!t.getString("id").equals(intent.getStringExtra("id"))||t.optBoolean("done")||!t.optString("alerted").equals(intent.getStringExtra("day"))||!t.optString("date").equals(intent.getStringExtra("start")))continue;
-                LocalDate start=LocalDate.parse(t.getString("date"));
-                LocalDate following=next(t,start,LocalDate.now().plusDays(1));
                 if("dev.daylist.SNOOZE".equals(intent.getAction()))t.put("snooze",System.currentTimeMillis()+600000L);
-                else if(t.optString("repeat").isEmpty()||following==null)t.put("done",true);
-                else {if(t.optString("repeat").equals("months"))t.put("monthDay",t.optInt("monthDay",start.getDayOfMonth()));t.put("date",following.toString());JSONArray subs=t.getJSONArray("subs");for(int j=0;j<subs.length();j++)subs.getJSONObject(j).put("done",false);}
-                if(prefs(c).edit().putString("list",list.toString()).commit()){notifications(c).cancel(t.getString("id"),1);Cloud.enqueue(c,false);}break;}
+                else list.put(i,TasksKt.toggle(t));
+                if(prefs(c).edit().putString("list",list.toString()).commit()){notifications(c).cancel(t.getString("id"),1);TodayWidget.changed(c);}break;}
         }catch(JSONException e){throw new IllegalStateException(e);}}
     }reconcile(c); }
 }

@@ -1,28 +1,33 @@
-# Daylist 1.2 for Android
-Tap + and type “Practice guitar tomorrow at 6 pm !!” followed by a quoted description and any number of [] checklist entries. Send saves immediately. Tap a preview chip or the paperclip to adjust the draft. Enter-to-send is optional; Shift+Enter adds a line. Date-only tasks remain silent. Explicit reminder times use the task date and override the notify-at-deadline setting. Times follow the phone’s local zone.
+# Daylist 1.4 for Android
+Offline Material 3 tasks with a Today widget, recurring schedules, Markdown, reminders and manual JSON transfer.
 
-## Install and upgrade
-Android 8+, current System WebView. Extract this project and put its contents, including .github, at the repository root. Push to run Build Android APK. Download and extract the Daylist-Android artifact. The workflow verifies the APK signature and prints the icon and package metadata.
+## Quick capture
+| Feature | Example |
+|---|---|
+| Inbox | Buy milk |
+| Today | Study Java today |
+| Tomorrow | Call Rahul tomorrow |
+| Deadline | Finish report tomorrow by 5 pm |
+| Reminder | Call mom remind at 8 pm |
+| Specific date | Pay bill remind at 25 December 2026 10 am |
+| Relative reminder | Take medicine remind in 30 minutes |
+| Priority | Buy groceries ! / Finish project !! / Submit assignment !!! |
+| Description | Study Java "Revise Collections" |
+| Subtasks | Clean room () Organize desk () Sweep floor |
+| Tags | Study SQL #learning |
+| Recurrence | Workout every Monday |
 
-Use the same signing key as your installed dev.daylist package. Different GitHub debug runs can use different keys. If Android rejects an update, preserve the original installation and its data until you have the matching signing key or a verified external backup. This project cannot recover an earlier runner's private key. For stable release builds, set repository Actions secrets DAYLIST_KEYSTORE_BASE64 (base64 of your existing keystore), DAYLIST_STORE_PASSWORD, DAYLIST_KEY_ALIAS and DAYLIST_KEY_PASSWORD. With no keystore configured, the workflow builds a debug APK. Locally use Gradle 8.9, JDK 17, Platform 35 and build tools 35.0.0.
+The reminder and deadline have separate dates. A time-only reminder selects its next occurrence and leaves an otherwise undated task in Inbox. Explicit past dates and missing times require correction. Tap the reminder chip to edit. On recurring tasks the reminder keeps its day offset relative to each scheduled occurrence. The explicit reminder overrides the optional automatic deadline notification. The parser runs locally. Parentheses containing text and code spans remain literal. Quoted Markdown descriptions retain their checklist formatting.
 
-## Cloud account setup
-1. In Google Cloud Console create/select a project and enable Google Drive API.
-2. In Google Auth Platform configure Branding and Audience. For a personal Gmail account choose External; in Testing add your own email as a test user. Under Data Access request only https://www.googleapis.com/auth/drive.appdata. Review and publish the consent configuration before distributing beyond testers.
-3. Create an OAuth client of type Android, package dev.daylist. Register the SHA-1 of the certificate actually signing the installed APK. The workflow prints this using apksigner. Create separate Android clients for distinct signing certificates, including the Play app signing certificate if distributed there. No client secret or service account belongs in the APK.
-4. On an Android device with Google Play services, open Settings → Connect Drive and grant access. The active Google account owns these private snapshots. Choose the same account when restoring. Background work requires network and may be deferred. Failed authorization needs foreground reconnection.
-5. Create a test task, tap Back up now and wait for Verified. Open Restore from Drive, select a snapshot, check the count and confirm replacement on a test installation. Export a separate copy using the system file picker before testing a restore on a populated device.
+## Data and upgrade
+Existing task IDs, local preference storage and manual JSON format are retained. For reminders saved by earlier releases without a reminder date, Daylist uses the existing due date. Settings → Data management provides JSON export and import. Import validates the snapshot before offering to replace local tasks. There is no online account or automatic backup. Export a file outside the app before uninstalling. Updates require the same signing certificate as the installed package.
 
-## Data and recovery
-Preserves the existing task store and identifiers. Snapshots carry the complete task records, deadline notification and keyboard preferences, schema version, creation timestamp and a SHA-256 integrity check. (The checksum detects corruption and is not an authentication or encryption mechanism.) Exported JSON contains readable task data. Cloud snapshots use HTTPS, read-back verification and five-version retention. Empty collections are skipped during automatic backup. Restore replaces local data only after validation and confirmation; it rebuilds reminders and clears prior task notifications. Android system backup includes only the tasks preference file. Its timing and availability depend on the device. Cross-device simultaneous editing is outside this backup model.
+## Home screen and notifications
+Long press the home screen → Widgets → Daylist · Today. Tap the checkbox to complete a task, its title to edit it, the heading to open Today or + to capture a task. The scrollable list includes overdue tasks. A recurring task advances once per occurrence. The phone may defer midnight widget refreshes during sleep. Give Daylist notification and exact-alarm access where available. Android may delay inexact alarms. Restart recovery runs after first unlock, and force-stop requires reopening Daylist.
 
-## Reminders and verification
-AlarmManager schedules the next eligible wake-up. Android's persisted repair job and receivers reconcile on startup, reboot after unlock, time/zone changes and updates. Exact access denial uses an inexact wake-up. Force-stopping requires reopening the app. A missed interval produces the latest eligible alert per task. Complete and Snooze (10 minutes) run through the receiver. Notification delivery and sound depend on device permissions, channel settings and system limits.
+## Build
+Extract the project at the repository root including .github. Push to run Build Android APK. Download Daylist-Android from the apk job for the installable build. UI test artifacts are separate. The standard job builds debug unless all release signing secrets are configured. Reuse your prior DAYLIST_KEYSTORE_BASE64, DAYLIST_STORE_PASSWORD, DAYLIST_KEY_ALIAS and DAYLIST_KEY_PASSWORD secrets for a release upgrade. Local build requires JDK 17, Gradle 8.9 and SDK Platform 35; run gradle :app:testDebugUnitTest :app:assembleDebug.
 
-Run node tests/capture.cjs. Before trusting alerts or cloud recovery, use disposable test data: check locked-screen delivery, snooze, system process kill, reboot, time changes, multiple simultaneous tasks, edited/cancelled reminders, permission denial, offline changes followed by reconnection, failed uploads, corrupted imports and reinstall restore. Check the launcher icon in Settings, Recents and themed icon mode. Android build, installation, Drive authorization and phone delivery require external verification.
-
-
-## Native interface and visual checks
-The activity hosts a Material 3 Compose interface. The packaged parser runs locally in an isolated JavaScript engine backed by System WebView. Markdown preview uses a separate read-only WebView with JavaScript and network access disabled. Task storage, IDs, reminder channels and backup schema are compatible with version 1.1. Open the overflow menu for Completed or Settings.
-
-The GitHub workflow includes a separate emulator job. It captures the task list, composer, metadata sheet, task editor, completed list and settings in a normal light profile and a compact dark profile with 150% text. Download the Daylist-UI-checks artifact to inspect the images. These are instrumented captures from the built app. To run on an attached disposable emulator locally, run bash tests/visual.sh from the project root. The script clears Daylist and changes emulator display settings between runs.
+## Performance and tests
+The system splash has light/dark launch resources. Task reads and sorting, writes, and reminder recovery run off the main thread. The app loads its parser on composer demand and initializes Markdown rendering on use. There is no startup synchronization worker. The widget and Today screen share grouping and completion logic.
+Run node tests/capture.cjs for parser regressions. The CI emulator suite covers UI capture, local task export validation, notification cancellation and idempotent widget completion. To compare the previous 1.2 build against this version on a dedicated Android 12+ physical device, run bash tests/compare-performance.sh /path/to/extracted/1.2 ./performance-results. The harness uses a separate profileable package and 500 disposable tasks. Compare startup, frame timing and interaction traces under the same device conditions. The previous build lacks the task-ready marker, so use initial-display timing for the direct startup comparison. No measured performance figures or physical-device results are included.
