@@ -1,5 +1,8 @@
-# Daylist 1.4.1 for Android
+# Daylist 1.5 for Android
 Offline Material 3 tasks with a Today widget, recurring schedules, Markdown, reminders and manual JSON transfer.
+
+## Calendar
+Swipe the grid or use the arrows to change months. Tap a day to see its tasks, then tap + to schedule a task for that date. An explicit date overrides the selection. Clear the due date in the composer to file a task in Inbox. Reminder-only entries also go to Inbox. Dots include completed dated tasks. Future repeats are previews of the same task. Open a preview to edit the series, or check off its current occurrence on the stored due date.
 
 ## Quick capture
 | Feature | Example |

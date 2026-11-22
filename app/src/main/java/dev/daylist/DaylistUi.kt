@@ -56,6 +56,8 @@ fun mount(a:Main){
     val tasks=loaded.orEmpty()
     androidx.activity.compose.ReportDrawnWhen {loaded!=null}
     var dest by rememberSaveable{mutableStateOf("Today")}
+    var selectedDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var captureDate by rememberSaveable { mutableStateOf("") }
     var settings by rememberSaveable{mutableStateOf(false)}
     var search by rememberSaveable{mutableStateOf(false)}
     var query by rememberSaveable{mutableStateOf("")}
@@ -69,10 +71,10 @@ fun mount(a:Main){
     var parsedText by remember{mutableStateOf<String?>(null)}
     val ready=a.ready
     LaunchedEffect(composing){if(composing)a.prepareParser()}
-    LaunchedEffect(text,ready,composing){if(ready&&composing){
+    LaunchedEffect(text,ready,composing,captureDate){if(ready&&composing){
         if(text.isNotEmpty())delay(30)
         val input=text
-        val result=suspendCancellableCoroutine<String>{c->a.engine.evaluateJavascript("capture("+JSONObject.quote(input)+")"){if(c.isActive)c.resumeWith(Result.success(it))}}
+        val result=suspendCancellableCoroutine<String>{c->a.engine.evaluateJavascript("capture("+JSONObject.quote(input)+",new Date(),"+JSONObject.quote(captureDate)+")"){if(c.isActive)c.resumeWith(Result.success(it))}}
         parsed=runCatching{JSONObject(result)}.getOrNull();parsedText=input
     }}
     val draft=remember(parsed,overrides){parsed?.copyTask()?.apply{val edits=JSONObject(overrides);edits.keys().forEach{put(it,edits.get(it))}}}
@@ -106,7 +108,7 @@ fun mount(a:Main){
     }
     fun details(t:JSONObject,field:String="",adding:Boolean=false){edit=t.toString();section=field;attachment=adding}
     LaunchedEffect(revision,loaded){
-        if(a.widgetRoute in listOf("today","add")){dest="Today";edit=null;search=false;query="";settings=false;composing=a.widgetRoute=="add";a.widgetRoute=""}
+        if(a.widgetRoute in listOf("today","add")){captureDate="";dest="Today";edit=null;search=false;query="";settings=false;composing=a.widgetRoute=="add";a.widgetRoute=""}
         if(loaded!=null){val id=bridge.selection();tasks.find{it.str("id")==id}?.let{settings=false;composing=false;details(it)}}
     }
     fun setText(value:String){text=value;bridge.saveDraft(value)}
@@ -118,7 +120,9 @@ fun mount(a:Main){
         sending=true
         write(saved){
         sending=false
-        dest=saved.group(LocalDate.now().toString());search=false;query="";setText("");overrides="{}";composing=false
+        if(dest=="Calendar" && captureDate.isNotEmpty() && saved.str("date").isNotEmpty()) selectedDate=saved.str("date")
+        else dest=saved.group(LocalDate.now().toString())
+        captureDate="";search=false;query="";setText("");overrides="{}";composing=false
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         scope.launch{snack.currentSnackbarData?.dismiss();if(snack.showSnackbar("Task added","Undo",duration=SnackbarDuration.Short)==SnackbarResult.ActionPerformed)write(saved,true)}
         }
@@ -128,7 +132,7 @@ fun mount(a:Main){
     var today by remember{mutableStateOf(LocalDate.now().toString())}
     LaunchedEffect(revision){today=LocalDate.now().toString();while(true){delay(60000);today=LocalDate.now().toString()}}
     val projected=remember(tasks,optimistic.toMap()){if(optimistic.isEmpty())tasks else tasks.map{optimistic[it.str("id")]?:it}}
-    val items=remember(projected,search,query,today,dest){projected.filter{if(search && query.isNotBlank())listOf(it.str("title"),it.str("description"),it.str("tags")).any{s->s.contains(query,true)} else it.group(today)==dest}}
+    val items=remember(projected,search,query,today,dest){if(dest=="Calendar"&&!search) emptyList() else projected.filter{if(search && query.isNotBlank())listOf(it.str("title"),it.str("description"),it.str("tags")).any{s->s.contains(query,true)} else it.group(today)==dest}}
     Scaffold(topBar={TopAppBar(title={
         if(search&&!settings)TextField(query,{query=it},singleLine=true,placeholder={Text("Search tasks")},modifier=Modifier.fillMaxWidth())
         else Text(if(settings)"Settings" else if(dest=="Completed")"Completed" else "Daylist",style=MaterialTheme.typography.headlineSmall)
@@ -139,7 +143,7 @@ fun mount(a:Main){
             DropdownMenuItem({Text("Completed")},{menu=false;dest="Completed";composing=false;search=false;query=""})
             DropdownMenuItem({Text("Settings")},{menu=false;settings=true})
         }}
-    }})},snackbarHost={SnackbarHost(snack)},floatingActionButton={if(!settings&&!composing)FloatingActionButton(onClick={composing=true}){Icon(Icons.Outlined.Add,"New task")}},
+    }})},snackbarHost={SnackbarHost(snack)},floatingActionButton={if(!settings&&!composing)FloatingActionButton(onClick={parsedText=null;captureDate=if(dest=="Calendar"&&!search)selectedDate else "";composing=true}){Icon(Icons.Outlined.Add,"New task")}},
     bottomBar={AnimatedVisibility(composing&&!settings,enter=expandVertically()+fadeIn(),exit=shrinkVertically()+fadeOut()){
         Surface(color=MaterialTheme.colorScheme.surfaceContainer,shape=Metrics.panel,modifier=Modifier.navigationBarsPadding().imePadding().fillMaxWidth().padding(8.dp)){
             Column(Modifier.padding(4.dp)){
@@ -166,10 +170,14 @@ fun mount(a:Main){
                 if(settings)Preferences(a,bridge,mode,onMode,revision)
                 else{
                     if(dest!="Completed"&&!search){
-                        val tabs=listOf("Inbox","Today","Upcoming")
-                        TabRow(tabs.indexOf(dest).coerceAtLeast(0)){tabs.forEach{Tab(dest==it,{dest=it},text={Text(it)})}}
+                        val tabs=listOf("Inbox","Today","Upcoming","Calendar")
+                        TabRow(tabs.indexOf(dest).coerceAtLeast(0)){tabs.forEach{Tab(dest==it,{dest=it}){Text(it,Modifier.padding(vertical=14.dp),style=MaterialTheme.typography.labelLarge)}}}
                     }
-                    if(loaded==null)Spacer(Modifier.height(1.dp)) else if(items.isEmpty()) Column(Modifier.padding(horizontal=24.dp,vertical=32.dp)){
+                    if(loaded==null)Spacer(Modifier.height(1.dp)) else if(dest=="Calendar" && !search) {
+                        CalendarView(projected, LocalDate.parse(selectedDate), LocalDate.parse(today), {selectedDate=it.toString()}) { t, preview ->
+                            TaskRow(t,today,{details(t)},{write(toggle(t),immediate=true)},false,preview){write(it)}
+                        }
+                    } else if(items.isEmpty()) Column(Modifier.padding(horizontal=24.dp,vertical=32.dp)){
                         Text(when{search->"No matching tasks";dest=="Today"->"Nothing due today";dest=="Inbox"->"Your inbox is empty";dest=="Upcoming"->"No upcoming tasks";else->"No completed tasks"},style=MaterialTheme.typography.titleMedium)
                         if(!search&&dest=="Inbox")Text("Tap + to capture a task without a date.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
 
@@ -214,25 +222,26 @@ internal fun labels(t:JSONObject):List<Pair<String,String>> = buildList{
     t.optJSONArray("tags")?.let{for(i in 0 until it.length())add("Tags" to "#"+it.getString(i))}
 }
 
-@Composable private fun TaskRow(t:JSONObject,today:String,open:()->Unit,complete:()->Unit,showDate:Boolean,save:(JSONObject)->Unit){
+@Composable private fun TaskRow(t:JSONObject,today:String,open:()->Unit,complete:()->Unit,showDate:Boolean,preview:Boolean=false,save:(JSONObject)->Unit){
     val done=t.optBoolean("done");val muted=MaterialTheme.colorScheme.onSurfaceVariant
     var expanded by rememberSaveable(t.str("id")){mutableStateOf(false)}
     val checklist=t.optJSONArray("subs")?.rows().orEmpty()
     Row(Modifier.fillMaxWidth().clickable(onClick=open).padding(start=4.dp,end=16.dp,top=4.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically){
-        Checkbox(done,{complete()},Modifier.semantics{contentDescription=(if(done)"Reopen " else "Complete ")+t.str("title")})
+        if(preview) Box(Modifier.size(48.dp),contentAlignment=Alignment.Center){Icon(Icons.Outlined.Repeat,"Upcoming occurrence",tint=muted)} else Checkbox(done,{complete()},Modifier.semantics{contentDescription=(if(done)"Reopen " else "Complete ")+t.str("title")})
         Column(Modifier.weight(1f).padding(vertical=8.dp)){
             Text(t.str("title"),style=MaterialTheme.typography.bodyLarge,color=if(done)muted else MaterialTheme.colorScheme.onSurface,textDecoration=if(done)TextDecoration.LineThrough else null)
             val meta=buildList{
                 val date=t.str("date")
                 if(showDate && date.isNotEmpty())add((if(!done && date<today)"Overdue · " else "")+prettyDay(date))
                 if(t.str("time").isNotEmpty())add(prettyTime(t.str("time")))
+                if(preview)add("Upcoming occurrence")
                 if(t.str("priority").isNotBlank())add(t.str("priority")+" priority")
                 val subs=t.optJSONArray("subs")?.rows().orEmpty();if(subs.isNotEmpty())add("${subs.count{it.optBoolean("done")}}/${subs.size} subtasks")
                 labels(t).filter{it.first in listOf("Recurrence","Tags")}.forEach{add(it.second)}
             }
             if(meta.isNotEmpty())Text(meta.joinToString(" · "),color=muted,style=MaterialTheme.typography.bodySmall)
         }
-        if(checklist.isNotEmpty())IconButton(onClick={expanded=!expanded}){Icon(if(expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,if(expanded)"Hide subtasks" else "Show subtasks")}
+        if(!preview && checklist.isNotEmpty())IconButton(onClick={expanded=!expanded}){Icon(if(expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,if(expanded)"Hide subtasks" else "Show subtasks")}
     }
     AnimatedVisibility(expanded){
         Column(Modifier.padding(start=40.dp,end=16.dp)){

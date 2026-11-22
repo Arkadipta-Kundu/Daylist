@@ -35,3 +35,13 @@ for(const phrase of ['today','today 7 am','31/02/2027 8 pm','25:30','sometime','
     const input='Read remind at '+phrase,t=parse(input,now);assert.ok(t.reminderError,input);assert.equal(t.title,input);assert.equal(t.date,'');assert.equal(t.reminder,'');
 }
 console.log('Independent reminder, invalid expression and delimiter checks passed.');
+const selected='2026-11-25';
+for(const [input,expected] of [
+    ['Practice guitar at 6 pm',{title:'Practice guitar',date:selected,time:'18:00'}],
+    ['Pay rent',{date:selected}],
+    ['Call tomorrow by 5 pm remind at today 7 pm',{date:'2026-11-23',time:'17:00',reminderDate:'2026-11-22'}],
+    ['Call Rahul remind at 7 pm',{date:'',reminderDate:'2026-11-22'}],
+    ['Repeat every Monday',{date:'2026-11-30',repeat:'weeks'}],
+    ['Read daily',{date:selected,repeat:'days'}]
+])for(const [key,value] of Object.entries(expected))assert.deepEqual(parse(input,now,selected)[key],value,input);
+console.log('Calendar capture checks passed.');

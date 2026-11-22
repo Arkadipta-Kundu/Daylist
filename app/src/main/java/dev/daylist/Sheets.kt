@@ -31,7 +31,7 @@ private val fields=linkedMapOf("Date" to Icons.Outlined.Event,"Reminder" to Icon
     var picker by rememberSaveable{mutableStateOf(if(adding&&first=="Reminder")"reminderDate" else "")}
     var confirm by remember{mutableStateOf(false)}
     var reading by rememberSaveable{mutableStateOf(!adding)}
-    fun set(k:String,v:Any){val copy=t.copyTask().put(k,v);if(k=="date")copy.remove("monthDay");if(k=="reminder"||k=="reminderDate"){
+    fun set(k:String,v:Any){val copy=t.copyTask().put(k,v);if(k=="date"){copy.remove("monthDay");if(adding && v=="")copy.put("time","")};if(k=="reminder"||k=="reminderDate"){
             copy.put("reminderError","")
             if(v=="" && k=="reminder"){copy.put("reminderDate","")}
             if(k=="reminder" && v!="" && copy.str("reminderDate").isEmpty())copy.put("reminderDate",copy.str("date").ifEmpty{LocalDate.now().toString()})

@@ -20,6 +20,19 @@ class NativeFlowTest {
         File(dir,"$variant-$label.png").outputStream().use{assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,it))}
         image.recycle()
     }
+    @Test fun calendarCaptureAndComplete(){
+        ui.onNodeWithText("Calendar").performClick()
+        ui.onNodeWithContentDescription("Next month").performClick()
+        ui.onNodeWithContentDescription("Previous month").performClick()
+        shot("calendar")
+        ui.onNodeWithContentDescription("New task").performClick()
+        val title="Calendar agenda check"
+        ui.onNodeWithContentDescription("New task text").performTextInput("$title at 6 pm")
+        ui.waitUntil(10000){ui.onAllNodes(hasContentDescription("Send task") and isEnabled()).fetchSemanticsNodes().isNotEmpty()}
+        ui.onNodeWithContentDescription("Send task").performClick()
+        ui.onNodeWithContentDescription("Complete "+title).performScrollTo().performClick()
+        ui.onNodeWithContentDescription("Reopen "+title).assertExists()
+    }
     @Test fun captureEditCompleteAndNavigate(){
         shot("today")
         ui.onNodeWithText("Inbox").performClick()
